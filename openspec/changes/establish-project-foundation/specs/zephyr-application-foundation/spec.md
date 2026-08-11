@@ -45,4 +45,3 @@ The foundation firmware SHALL NOT implement USART1 communication, ESP-AT, Wi-Fi,
 #### Scenario: Foundation source review
 - **WHEN** the foundation implementation is reviewed
 - **THEN** it contains only startup, diagnostic-console, and user-LED behavior and none of the excluded protocol or coprocessor functionality
-

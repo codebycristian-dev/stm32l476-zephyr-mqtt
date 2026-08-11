@@ -46,4 +46,3 @@ All workflow scripts SHALL avoid software installation, package updates, and wri
 #### Scenario: Workflow side-effect review
 - **WHEN** the diagnostics, build, flash, and monitor scripts are reviewed
 - **THEN** their writes are confined to repository-local build outputs and the explicitly requested hardware interfaces
-

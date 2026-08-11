@@ -24,4 +24,3 @@ The skill SHALL state how to verify build completion, memory reporting, successf
 #### Scenario: Foundation acceptance verification
 - **WHEN** Codex follows the skill to verify the completed foundation on available hardware
 - **THEN** it reports separate pass or fail evidence for build, FLASH/ROM and RAM reporting, flash, startup log within 5 seconds, and observable LED state changes
-
