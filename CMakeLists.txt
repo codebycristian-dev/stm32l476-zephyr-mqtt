@@ -3,5 +3,9 @@ cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(stm32l476_zephyr_mqtt LANGUAGES C)
 
-target_sources(app PRIVATE src/main.c)
+target_sources(app PRIVATE
+  src/main.c
+  src/byte_ring.c
+  src/usart1_transport.c
+)
 target_include_directories(app PRIVATE include)
