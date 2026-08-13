@@ -19,3 +19,29 @@ Record PASS or FAIL and evidence separately for every item:
 
 Build and memory evidence do not imply hardware acceptance. Flash, restart,
 console timing, and LED evidence remain pending until separately authorized.
+
+## USART1 physical loopback — 2026-08-13
+
+Task 5.6 of `add-usart1-cmsis-driver` passed with PA9 (`USART1_TX`)
+physically connected to PA10 (`USART1_RX`). The only programmed target was the
+NUCLEO-L476RG ST-LINK probe `066EFF515250898367012013`; USART2 output was
+captured from its stable ST-LINK virtual COM endpoint
+`usb-STMicroelectronics_STM32_STLink_066EFF515250898367012013-if02` at
+115200 8-N-1. The WCH USB serial device `1a86:55d3`, serial `5B14063285`, was
+excluded and not opened or programmed.
+
+STM32CubeProgrammer identified `NUCLEO-L476RG`, completed the download, and
+reported a successful application start. The USART2 console reported:
+
+- short payload: PASS, 5 bytes transmitted and 5 received;
+- binary payload containing `0x00` and non-printable bytes: PASS, 8 transmitted
+  and 8 received;
+- RX-ring-wrap payload: PASS, 56 transmitted and 56 received;
+- total: 69 transmitted and 69 received, with exact binary equality and FIFO
+  ordering checked by the target firmware;
+- final parity, framing, noise, hardware-overrun, and ring-overflow counters:
+  all zero.
+
+The physical loopback suite completed once without an intentional overrun.
+Loopback mode was restored to its default-off repository configuration after
+the acceptance run.

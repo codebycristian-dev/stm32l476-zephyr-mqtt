@@ -1,0 +1,10 @@
+mainmenu "stm32l476-zephyr-mqtt"
+
+config APP_USART1_LOOPBACK
+	bool "Run bounded PA9-to-PA10 physical loopback verification"
+	default n
+	help
+	  Requires PA9 to be physically connected to PA10. Results are logged on
+	  the unchanged USART2/ST-LINK console. Do not enable for normal firmware.
+
+source "Kconfig.zephyr"

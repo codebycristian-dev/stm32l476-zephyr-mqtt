@@ -1,0 +1,4 @@
+interface:
+  display_name: "STM32L476 USART Review"
+  short_description: "Review direct-register USART1 implementation"
+  default_prompt: "Use $stm32l476-usart-review to audit the repository USART1 transport and report evidence-backed findings."

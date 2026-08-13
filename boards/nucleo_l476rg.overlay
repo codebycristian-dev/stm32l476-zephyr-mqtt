@@ -1,0 +1,10 @@
+/* USART1 belongs to the direct-CMSIS transport; USART2 remains the console. */
+&usart1 {
+	status = "disabled";
+};
+
+/ {
+	chosen {
+		zephyr,console = &usart2;
+	};
+};
