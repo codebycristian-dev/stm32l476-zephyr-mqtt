@@ -4,6 +4,8 @@ The STM32L476RG application foundation is complete, but neither USART1 nor MQTT 
 
 Qualification covers Linux USB discovery, serial command exchange, Wi-Fi association, TCP testing, concise evidence, future transport requirements, and a project-local operator skill. Hardware identity, installed firmware, port topology, serial settings, network access, and exact responses are runtime observations rather than facts to assume in planning.
 
+Subsequent hardware inspection established an ESP32-C6 revision 0.2 with 16 MB flash. The WCH `1a86:55d3` interface at `/dev/ttyACM0` is the UART0 download/log path. For the official default ESP-AT configuration on ESP32-C6, the AT command UART is UART1 using GPIO6 as RX and GPIO7 as TX. ESP-AT firmware can remap these pins, and the currently installed firmware on this board has not yet been shown to use this mapping. Because no external USB-UART adapter is available, the earlier UART0 probe is inconclusive about ESP-AT rather than evidence that ESP-AT is absent or unresponsive.
+
 ## Goals / Non-Goals
 
 **Goals:**
@@ -61,6 +63,7 @@ The evidence will state baud, data bits, parity, stop bits, flow control, line e
 
 - [Multiple USB serial interfaces or unstable `/dev/tty*` names] → Correlate udev/sysfs metadata and stable `/dev/serial/by-id` links, enumerate all candidates, and require an unambiguous selected endpoint.
 - [Unknown installed firmware or baud rate] → Probe a bounded, documented set of common configurations using harmless `AT` requests and report inconclusive results without flashing.
+- [USB download/log endpoint differs from the ESP-AT command UART] → Record endpoint roles independently, never infer ESP-AT absence from UART0, and defer UART1 qualification until an external UART host is available. The later STM32L476RG USART1 transport may provide that host during its separately authorized hardware stage.
 - [Serial probing disrupts another attached device] → Filter by discovered physical USB identity, display the target, detect busy ports, and require explicit device selection when ambiguous.
 - [Credentials leak through process arguments, logs, shell history, or evidence] → Use non-echoing/ephemeral input, redact transmitted join commands and responses, scan generated evidence, and document cleanup behavior.
 - [TCP test depends on an external endpoint] → Make endpoint selection explicit, record it, use a deterministic plain TCP exchange, and distinguish modem capability failure from DNS/network/remote-endpoint failure.
@@ -73,7 +76,7 @@ This is an additive qualification change. Implement the single tool, minimal tes
 
 ## Open Questions
 
-- What exact ESP32-C6 board, USB bridge/topology, serial endpoint, firmware version, and UART configuration will discovery establish?
+- What firmware version, UART1 serial configuration, and actual configured UART1 endpoint will direct qualification establish?
 - Are credentials and a suitable access point available during implementation for association/IP checks?
 - Which deterministic TCP endpoint is reachable from that network, or should the operator provide a local test server?
 - What maximum response bursts, unsolicited messages, and send sizes will be observed and therefore carried into the later USART1 acceptance criteria?

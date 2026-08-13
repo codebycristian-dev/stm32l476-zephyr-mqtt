@@ -1,0 +1,86 @@
+{
+  "schema": "espat-qualification-v1",
+  "generated_at": "2026-08-13T14:11:46Z",
+  "result": "partial-stop",
+  "discovery": {
+    "outcome": "pass",
+    "physical_identity": {
+      "chip": "ESP32-C6",
+      "revision": "0.2",
+      "flash_id_capacity": "16 MB",
+      "verification": "esptool communicated successfully through the WCH endpoint"
+    },
+    "usb": {
+      "vid": "1a86",
+      "pid": "55d3",
+      "product": "USB Single Serial",
+      "serial": "5B14063285",
+      "topology": "usb3/3-1",
+      "interface": "3-1:1.0",
+      "role": "UART0 download/log endpoint",
+      "esptool_communication": "pass"
+    },
+    "serial_interfaces": [{
+      "device": "/dev/ttyACM0",
+      "by_id": "/dev/serial/by-id/usb-1a86_USB_Single_Serial_5B14063285-if00",
+      "mode": "crw-rw----",
+      "readable": true,
+      "writable": true,
+      "selected_for_prior_probe": true,
+      "verified_at_endpoint": false,
+      "role": "UART0 download/log"
+    }]
+  },
+  "serial_probe": {
+    "outcome": "inconclusive",
+    "outcome_basis": "The probed WCH endpoint is UART0 download/log, not a verified UART1 AT path",
+    "probed_endpoint": "/dev/ttyACM0",
+    "attempted": {
+      "baud": [115200, 230400, 460800, 921600, 57600, 38400, 19200, 9600],
+      "data_bits": 8,
+      "parity": "none",
+      "stop_bits": 1,
+      "flow_control": "none",
+      "line_termination": ["CRLF", "CR"]
+    },
+    "firmware_evidence": [
+      "115200 baud produced: Restarting in 8 seconds...",
+      "115200 baud produced subsequent countdown lines through 5 seconds",
+      "Other attempted baud rates produced undecodable/mismatched-baud data"
+    ],
+    "esp_at_status": "inconclusive",
+    "interpretation": "No valid ESP-AT response on UART0 cannot establish whether ESP-AT is installed or responsive on UART1",
+    "uart1_at_endpoint": {
+      "rx": "GPIO6",
+      "tx": "GPIO7",
+      "pins_physically_accessible": true,
+      "external_uart_host_available": false,
+      "qualification": "blocked",
+      "dependency": "An external UART host is required; the planned STM32L476RG USART1 transport may serve as that host in the subsequent hardware stage"
+    },
+    "uart_configuration": "inconclusive"
+  },
+  "baseline": {
+    "outcome": "not-run",
+    "reason": "Blocked until the UART1 AT endpoint on GPIO6/GPIO7 has an external UART host",
+    "commands": {
+      "AT": "inconclusive on UART0; not run on UART1",
+      "AT+GMR": "not-run",
+      "AT+CWMODE?": "not-run",
+      "AT+CIPSTATUS": "not-run"
+    },
+    "esp_at_version": "unavailable",
+    "esp_idf_version": "unavailable",
+    "chip_build_information": "unavailable"
+  },
+  "wifi": {"outcome": "not-run", "reason": "UART1 AT endpoint qualification is blocked"},
+  "tcp": {"outcome": "not-run", "reason": "Requires UART1 ESP-AT confirmation and successful IP acquisition"},
+  "safety": {
+    "flashed": false,
+    "erased": false,
+    "restored": false,
+    "packages_installed": false,
+    "mqtt_used": false,
+    "stm32_usart1_changed": false
+  }
+}
