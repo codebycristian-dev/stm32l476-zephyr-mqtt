@@ -21,6 +21,10 @@ static void run_espat_at_diagnostic(void)
 {
 	static const uint8_t command[] = {'A', 'T', '\r', '\n'};
 	struct espat_response response;
+	struct usart1_error_counters errors;
+	char response_hex[(ESPAT_RESPONSE_CAPACITY * 3U) + 1U];
+	char response_printable[ESPAT_RESPONSE_CAPACITY + 1U];
+	size_t hex_length = 0U;
 	int64_t deadline;
 	uint8_t byte;
 
@@ -40,12 +44,34 @@ static void run_espat_at_diagnostic(void)
 		}
 	}
 	espat_response_finish(&response);
+	for (size_t i = 0U; i < response.length; i++) {
+		static const char digits[] = "0123456789ABCDEF";
+		uint8_t value = response.bytes[i];
+
+		response_hex[hex_length++] = digits[value >> 4];
+		response_hex[hex_length++] = digits[value & 0x0fU];
+		response_hex[hex_length++] = i + 1U < response.length ? ' ' : '\0';
+		response_printable[i] = value >= 0x20U && value <= 0x7eU ?
+			(char)value : '.';
+	}
+	if (response.length == 0U) {
+		response_hex[0] = '\0';
+	}
+	response_printable[response.length] = '\0';
+	usart1_transport_get_errors(&errors);
+	LOG_INF("ESP-AT diagnostic: TX bytes=4 hex=41 54 0D 0A");
+	LOG_INF("ESP-AT diagnostic: RX hex=[%s] printable=[%s]", response_hex,
+		response_printable);
 	LOG_INF("ESP-AT diagnostic: result=%s bytes=%u/%u echo=%u urc=%u prompts=%u overflow=%u timeout=%u",
 		response.final == ESPAT_FINAL_OK ? "OK" :
 		response.final == ESPAT_FINAL_ERROR ? "ERROR" : "NONE",
 		(unsigned int)response.length, ESPAT_RESPONSE_CAPACITY,
 		response.echo_count, response.unsolicited_count, response.prompt_count,
 		response.overflow, response.final == ESPAT_FINAL_NONE);
+	LOG_INF("ESP-AT diagnostic: errors PE=%u FE=%u NE=%u ORE=%u ring=%u",
+		(unsigned int)errors.parity, (unsigned int)errors.framing,
+		(unsigned int)errors.noise, (unsigned int)errors.overrun,
+		(unsigned int)errors.ring_overflow);
 }
 #endif
 

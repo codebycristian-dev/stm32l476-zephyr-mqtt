@@ -31,3 +31,4 @@
 - [x] 4.2 Add the bounded single-command `AT\r\n` diagnostic without redesigning USART1 or adding network/MQTT behavior.
 - [x] 4.3 Add fixed-storage response classification for OK, error, echo, unsolicited lines, prompts, overflow, and timeout with host tests.
 - [x] 4.4 Run host tests, a pristine nucleo_l476rg build, USART review, strict OpenSpec validation, and git diff checking without flashing.
+- [x] 4.5 Execute the explicitly authorized single `AT\r\n` Nucleo probe, retain its bounded result, and stop without retrying or advancing to identity, Wi-Fi, TCP, or MQTT commands.

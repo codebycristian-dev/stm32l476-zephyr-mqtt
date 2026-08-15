@@ -28,9 +28,26 @@ ST-LINK diagnostic console.
 The smallest diagnostic firmware sends only `AT\r\n` once after USART1
 initialization. It collects at most 64 bytes for 1000 ms, classifies command
 echo, `OK`, `ERROR`/`FAIL`, prompts, other unsolicited lines, overflow, and
-timeout, and reports the summary through USART2. This preparation is not a
-runtime qualification result: the Nucleo has not yet been flashed with it and
-the ESP32-C6 has not yet responded through GPIO6/GPIO7.
+timeout, and reports the summary through USART2.
+
+### Initial STM32 UART1 probe evidence (2026-08-14)
+
+The NUCLEO-L476RG was positively selected through ST-LINK serial
+`066EFF515250898367012013`; its USART2 console was opened only through
+`/dev/serial/by-id/usb-STMicroelectronics_STM32_STLink_066EFF515250898367012013-if02`.
+The WCH `1a86:55d3` device, serial `5B14063285`, was excluded.
+
+With PA9 connected to GPIO6, PA10 connected to GPIO7, and common ground, the
+single diagnostic run transmitted exactly 4 bytes (`41 54 0D 0A`, `AT\r\n`).
+It received 0 bytes in the bounded 1000 ms window: raw hex and printable
+responses were both empty. Classification was `TIMEOUT`; echo, `OK`, error,
+prompt, unsolicited-line, and overflow observations were all zero. USART1
+parity, framing, noise, overrun, and ring-overflow counters were all zero.
+
+This is an inconclusive initial probe. It establishes only that no valid ESP-AT
+response was observed at 115200 8N1 on the tested default UART1 mapping. It is
+not evidence that ESP-AT is absent, and no alternate baud, mapping, command, or
+firmware was tried.
 
 Run non-secret discovery first:
 
