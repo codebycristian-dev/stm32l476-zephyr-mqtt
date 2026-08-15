@@ -104,3 +104,10 @@ The workflow SHALL retain only the minimum evidence needed to support the result
 #### Scenario: Full qualification is ready to archive
 - **WHEN** baseline commands, Wi-Fi association, IP acquisition, and TCP connect/send/receive/close have passed
 - **THEN** the result is fully qualified and may proceed to OpenSpec verification and archival readiness
+
+### Requirement: Bounded STM32 UART1 diagnostic
+The qualification firmware SHALL reuse the verified direct-CMSIS USART1 transport, send only `AT\r\n` as its first runtime modem command at 115200 8N1 with no flow control, collect a response in fixed bounded storage, classify `OK`, error, echo, unsolicited lines, prompts, overflow, and timeout, and report through USART2/ST-LINK. It SHALL NOT use Zephyr UART, STM32 HAL/LL, dynamic allocation, network commands, or MQTT.
+
+#### Scenario: Diagnostic is prepared but not flashed
+- **WHEN** host tests, target build, transport review, and static validation pass
+- **THEN** the firmware is ready for the explicit wiring and flash step but no runtime modem qualification task is marked complete

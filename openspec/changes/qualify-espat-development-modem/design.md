@@ -1,10 +1,10 @@
 ## Context
 
-The STM32L476RG application foundation is complete, but neither USART1 nor MQTT exists. An ESP32-C6 is available in place of the originally intended ESP8266, so it must first be qualified independently on Linux as an ESP-AT modem. The resulting contract must remain portable across compatible ESP-AT devices and must not leak credentials or require an unapproved firmware mutation.
+The STM32L476RG application foundation and direct-CMSIS USART1 transport are complete; MQTT does not exist. An ESP32-C6 is available in place of the originally intended ESP8266, so it must first be qualified as an ESP-AT modem. The resulting contract must remain portable across compatible ESP-AT devices and must not leak credentials or require an unapproved firmware mutation.
 
 Qualification covers Linux USB discovery, serial command exchange, Wi-Fi association, TCP testing, concise evidence, future transport requirements, and a project-local operator skill. Hardware identity, installed firmware, port topology, serial settings, network access, and exact responses are runtime observations rather than facts to assume in planning.
 
-Subsequent hardware inspection established an ESP32-C6 revision 0.2 with 16 MB flash. The WCH `1a86:55d3` interface at `/dev/ttyACM0` is the UART0 download/log path. For the official default ESP-AT configuration on ESP32-C6, the AT command UART is UART1 using GPIO6 as RX and GPIO7 as TX. ESP-AT firmware can remap these pins, and the currently installed firmware on this board has not yet been shown to use this mapping. Because no external USB-UART adapter is available, the earlier UART0 probe is inconclusive about ESP-AT rather than evidence that ESP-AT is absent or unresponsive.
+Subsequent hardware inspection established an ESP32-C6 revision 0.2 with 16 MB flash. The WCH `1a86:55d3` interface at `/dev/ttyACM0` is the UART0 download/log path. For the official default ESP-AT configuration on ESP32-C6, the AT command UART is UART1 using GPIO6 as RX and GPIO7 as TX. ESP-AT firmware can remap these pins, and the currently installed firmware on this board has not yet been shown to use this mapping. The earlier UART0 probe is inconclusive about ESP-AT rather than evidence that ESP-AT is absent or unresponsive. The physically verified STM32 USART1 transport now resolves the external UART-host blocker and can test the default UART1 mapping.
 
 ## Goals / Non-Goals
 
@@ -18,7 +18,7 @@ Subsequent hardware inspection established an ESP32-C6 revision 0.2 with 16 MB f
 
 **Non-Goals:**
 
-- Implement, configure, wire, or test STM32 USART1.
+- Redesign the implemented STM32 USART1 transport or claim modem qualification before the diagnostic is flashed and observed.
 - Implement MQTT or use ESP-AT MQTT commands.
 - Flash, erase, restore, or otherwise replace modem firmware without separate explicit authorization.
 - Install host packages without separate explicit authorization.
@@ -55,15 +55,15 @@ The future STM32 stack will expose `modem_init`, `modem_join_ap`, `modem_tcp_con
 
 Alternative: expose raw AT commands directly to MQTT. Rejected because it couples protocol logic to modem syntax and prevents replacement or targeted qualification.
 
-### Derive USART1 requirements without implementing the transport
+### Reuse the verified USART1 transport for the first UART1 probe
 
-The evidence will state baud, data bits, parity, stop bits, flow control, line ending, response termination, unsolicited-result handling, receive buffering, command timeout/retry needs, and maximum observed or declared transaction sizes. These become acceptance inputs to a separate USART1 change; no devicetree, pin, Kconfig, driver, or application code changes are made here.
+The separate USART1 change established PA9/PA10, 115200 8N1, no flow control, polling TX, interrupt RX, and a static 64-byte ring with a physical 69/69-byte loopback pass and zero error counters. This change adds only a fixed-storage parser and application diagnostic that sends `AT\r\n`, accepts at most 64 response bytes for 1000 ms, classifies final results, echo, prompts, unsolicited lines, overflow, and timeout, and reports through the unchanged USART2 console.
 
 ## Risks / Trade-offs
 
 - [Multiple USB serial interfaces or unstable `/dev/tty*` names] → Correlate udev/sysfs metadata and stable `/dev/serial/by-id` links, enumerate all candidates, and require an unambiguous selected endpoint.
 - [Unknown installed firmware or baud rate] → Probe a bounded, documented set of common configurations using harmless `AT` requests and report inconclusive results without flashing.
-- [USB download/log endpoint differs from the ESP-AT command UART] → Record endpoint roles independently, never infer ESP-AT absence from UART0, and defer UART1 qualification until an external UART host is available. The later STM32L476RG USART1 transport may provide that host during its separately authorized hardware stage.
+- [USB download/log endpoint differs from the ESP-AT command UART] → Record endpoint roles independently, never infer ESP-AT absence from UART0, and use the verified STM32 USART1 host on GPIO6/GPIO7 only after separate flash authorization.
 - [Serial probing disrupts another attached device] → Filter by discovered physical USB identity, display the target, detect busy ports, and require explicit device selection when ambiguous.
 - [Credentials leak through process arguments, logs, shell history, or evidence] → Use non-echoing/ephemeral input, redact transmitted join commands and responses, scan generated evidence, and document cleanup behavior.
 - [TCP test depends on an external endpoint] → Make endpoint selection explicit, record it, use a deterministic plain TCP exchange, and distinguish modem capability failure from DNS/network/remote-endpoint failure.

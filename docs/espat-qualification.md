@@ -5,7 +5,7 @@ Python standard library and never installs software, flashes or erases a modem,
 runs `AT+RESTORE`, accesses a serial endpoint that was not first correlated to
 an Espressif USB device, or implements STM32 USART1 or MQTT.
 
-## Current hardware evidence and blocker
+## Current hardware evidence and STM32 diagnostic host
 
 The attached target is a verified ESP32-C6 revision 0.2 with a reported 16 MB
 flash. Esptool communicates through the WCH `1a86:55d3` interface exposed as
@@ -14,15 +14,23 @@ not establish that `/dev/ttyACM0` is an ESP-AT command endpoint.
 
 Official ESP-AT uses UART0 for download/log and UART1 for AT commands on this
 target: GPIO6 is UART1 RX and GPIO7 is UART1 TX. Both pins are physically
-accessible, but no external USB-UART adapter is currently available. Therefore
+accessible. Therefore
 the harmless probes previously sent through `/dev/ttyACM0` are inconclusive
 about ESP-AT presence; they do not show that ESP-AT is absent or unresponsive.
 
 Do not repeat baseline qualification against `/dev/ttyACM0` as though it were
-the AT endpoint. Qualification is blocked until an external UART host can be
-connected to GPIO6/GPIO7. The planned STM32L476RG USART1 transport may serve as
-that host in its subsequent, separately authorized hardware stage. This change
-remains active, and no remaining qualification task is complete on this basis.
+the AT endpoint. The UART-host blocker is resolved: the STM32L476RG direct-CMSIS
+USART1 transport has been physically verified at 115200 8N1 (69/69 loopback
+bytes exact, all error counters zero), with PA9 TX, PA10 RX, polling transmit,
+interrupt-driven receive, and a static 64-byte receive ring. USART2 remains the
+ST-LINK diagnostic console.
+
+The smallest diagnostic firmware sends only `AT\r\n` once after USART1
+initialization. It collects at most 64 bytes for 1000 ms, classifies command
+echo, `OK`, `ERROR`/`FAIL`, prompts, other unsolicited lines, overflow, and
+timeout, and reports the summary through USART2. This preparation is not a
+runtime qualification result: the Nucleo has not yet been flashed with it and
+the ESP32-C6 has not yet responded through GPIO6/GPIO7.
 
 Run non-secret discovery first:
 
@@ -77,9 +85,10 @@ results, the send prompt, `SEND OK`/`SEND FAIL`, asynchronous status lines, and
 version/build strings, exact baud and observed timing are device/build-specific
 or uncertain observations and stay outside the logical API.
 
-## Future STM32 USART1 requirements
+## STM32 USART1 transport and future modem-engine requirements
 
-A later, separately authorized transport shall:
+The verified transport supplies the fixed 115200 8N1, no-flow-control physical
+path and bounded 64-byte interrupt receive ring. A later modem engine shall:
 
 - configure the measured baud, 8 data bits, measured parity/stop bits/flow
   control, and measured line termination;
@@ -94,5 +103,5 @@ A later, separately authorized transport shall:
   Until physical evidence supplies those bounds, treat them as unresolved and
   prevent silent truncation rather than inventing constants.
 
-No USART1 pins, devicetree, Kconfig, driver, wiring, or MQTT behavior is part of
-this qualification.
+The diagnostic reuses the transport without Zephyr UART, STM32 HAL/LL, dynamic
+allocation, Wi-Fi, TCP, or MQTT behavior.

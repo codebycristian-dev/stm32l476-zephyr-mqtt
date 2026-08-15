@@ -7,12 +7,47 @@
 #include <string.h>
 
 #include "usart1_transport.h"
+#include "espat_response.h"
 
 LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 
 #define USER_LED_NODE DT_ALIAS(led0)
 #define LED_PERIOD_MS 500
 #define LOOPBACK_TIMEOUT_MS 1000
+#define ESPAT_AT_TIMEOUT_MS 1000
+
+#if CONFIG_APP_ESPAT_AT_DIAGNOSTIC
+static void run_espat_at_diagnostic(void)
+{
+	static const uint8_t command[] = {'A', 'T', '\r', '\n'};
+	struct espat_response response;
+	int64_t deadline;
+	uint8_t byte;
+
+	espat_response_init(&response);
+	LOG_INF("ESP-AT diagnostic: sending AT\\r\\n on PA9; bounded response on PA10");
+	if (usart1_transport_write(command, sizeof(command)) < 0) {
+		LOG_ERR("ESP-AT diagnostic: command transmit rejected");
+		return;
+	}
+	deadline = k_uptime_get() + ESPAT_AT_TIMEOUT_MS;
+	while (!espat_response_complete(&response) && !response.overflow &&
+	       k_uptime_get() < deadline) {
+		if (usart1_transport_read(&byte)) {
+			espat_response_feed(&response, byte);
+		} else {
+			k_msleep(1);
+		}
+	}
+	espat_response_finish(&response);
+	LOG_INF("ESP-AT diagnostic: result=%s bytes=%u/%u echo=%u urc=%u prompts=%u overflow=%u timeout=%u",
+		response.final == ESPAT_FINAL_OK ? "OK" :
+		response.final == ESPAT_FINAL_ERROR ? "ERROR" : "NONE",
+		(unsigned int)response.length, ESPAT_RESPONSE_CAPACITY,
+		response.echo_count, response.unsolicited_count, response.prompt_count,
+		response.overflow, response.final == ESPAT_FINAL_NONE);
+}
+#endif
 
 #if CONFIG_APP_USART1_LOOPBACK
 static int run_loopback_case(const char *name, const uint8_t *payload, size_t length)
@@ -97,6 +132,10 @@ int main(void)
 	if (run_physical_loopback() < 0) {
 		return 0;
 	}
+#endif
+
+#if CONFIG_APP_ESPAT_AT_DIAGNOSTIC
+	run_espat_at_diagnostic();
 #endif
 
 #if !DT_NODE_HAS_STATUS(USER_LED_NODE, okay)

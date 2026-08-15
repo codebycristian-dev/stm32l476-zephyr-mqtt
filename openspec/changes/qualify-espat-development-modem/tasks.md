@@ -20,7 +20,14 @@
 ## 3. Portable Handoff
 
 - [ ] 3.1 Derive the smallest evidence-backed ESP-AT runtime command subset and distinguish generic behavior from ESP32-C6-specific or uncertain observations.
-- [ ] 3.2 Document future STM32 USART1 transport requirements for confirmed framing, line termination, prompts, responses, unsolicited data, buffering, timeouts, retries, errors, and observed limits without implementing or connecting USART1.
+- [ ] 3.2 Document the verified STM32 USART1 transport baseline plus future modem-engine requirements for line termination, prompts, responses, unsolicited data, buffering, timeouts, retries, errors, and observed limits.
 - [ ] 3.3 Preserve `modem_init`, `modem_join_ap`, `modem_tcp_connect`, `modem_send`, `modem_receive`, and `modem_close` as the modem-neutral future API, with no ESP32-C6 detail exposed to MQTT.
 - [ ] 3.4 Create the small project-local `espat-development-modem-readiness` skill, referencing the repository tool as source of truth and duplicating no protocol implementation.
 - [ ] 3.5 Run minimal tool tests, secret review, skill validation, and strict OpenSpec validation; declare archival readiness only after full Wi-Fi/TCP qualification or explicit user acceptance of a partial result.
+
+## 4. STM32 UART1 Diagnostic Host
+
+- [x] 4.1 Record that the verified direct-CMSIS USART1 transport resolves the external UART-host blocker and document the GPIO6/GPIO7 wiring.
+- [x] 4.2 Add the bounded single-command `AT\r\n` diagnostic without redesigning USART1 or adding network/MQTT behavior.
+- [x] 4.3 Add fixed-storage response classification for OK, error, echo, unsolicited lines, prompts, overflow, and timeout with host tests.
+- [x] 4.4 Run host tests, a pristine nucleo_l476rg build, USART review, strict OpenSpec validation, and git diff checking without flashing.

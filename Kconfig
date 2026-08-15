@@ -7,4 +7,12 @@ config APP_USART1_LOOPBACK
 	  Requires PA9 to be physically connected to PA10. Results are logged on
 	  the unchanged USART2/ST-LINK console. Do not enable for normal firmware.
 
+config APP_ESPAT_AT_DIAGNOSTIC
+	bool "Send one bounded ESP-AT health command on USART1"
+	default y
+	depends on !APP_USART1_LOOPBACK
+	help
+	  Sends only AT followed by CRLF, collects at most 64 response bytes for
+	  1000 ms, classifies the response, and reports through USART2/ST-LINK.
+
 source "Kconfig.zephyr"
