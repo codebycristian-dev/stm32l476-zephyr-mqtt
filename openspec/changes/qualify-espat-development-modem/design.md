@@ -65,6 +65,15 @@ After successful provisioning, the follow-up diagnostic sends exactly `AT\r\n`, 
 
 The first post-provision run proved the gated exchange but Zephyr's 1024-byte deferred logger overflowed while several large evidence messages were queued, dropping nine messages. Mandatory evidence therefore uses two fixed transaction snapshots and a single delimited record written synchronously with `printk` through the unchanged USART2 console. The diagnostic build also selects immediate logging so an asynchronous log worker cannot interleave ordinary status with that record; no logger queue is enlarged. A diagnostic-only 1000 ms startup delay gives the host time to open the ST-LINK VCP after normal boot; it does not retry commands or depend on a programmer reset.
 
+The next physical run exposed a main-thread stack overflow in that synchronous
+record path. The 752-byte transaction snapshots were already static and passed
+only by pointer, but `espat_evidence_emit` kept a 192-byte identity copy on the
+1024-byte main stack while nested streaming and Zephyr `printk` frames were
+active. Identity fields are now emitted directly from the fixed GMR snapshot,
+the evidence implementation has a host compile-time stack-usage regression,
+and the explicitly configured 1536-byte main stack provides bounded formatter
+headroom. No response or identity storage was moved into additional static RAM.
+
 ## Risks / Trade-offs
 
 - [Multiple USB serial interfaces or unstable `/dev/tty*` names] → Correlate udev/sysfs metadata and stable `/dev/serial/by-id` links, enumerate all candidates, and require an unambiguous selected endpoint.

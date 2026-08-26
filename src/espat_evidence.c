@@ -39,7 +39,11 @@ const char *espat_evidence_classification(
 bool espat_evidence_allows_gmr(
 	const struct espat_transaction_evidence *at_evidence)
 {
-	return strcmp(espat_evidence_classification(at_evidence), "OK") == 0;
+	return at_evidence != NULL && at_evidence->executed &&
+	       at_evidence->response.final == ESPAT_FINAL_OK &&
+	       !at_evidence->transmit_failed && !at_evidence->timed_out &&
+	       !at_evidence->response.overflow &&
+	       !has_uart_error(&at_evidence->errors);
 }
 
 static void emit_text(espat_evidence_write_fn write, void *context,
@@ -124,6 +128,37 @@ static void emit_printable(const struct espat_response *response,
 	}
 }
 
+static void emit_identity_line(const struct espat_response *response,
+			       const char *prefix,
+			       espat_evidence_write_fn write, void *context)
+{
+	size_t prefix_length = strlen(prefix);
+	size_t start = 0U;
+
+	for (size_t i = 0U; i <= response->length; i++) {
+		bool at_end = i == response->length;
+		uint8_t byte = at_end ? '\n' : response->bytes[i];
+		size_t length;
+
+		if (byte != '\r' && byte != '\n') {
+			continue;
+		}
+		length = i - start;
+		if (length >= prefix_length &&
+		    memcmp(&response->bytes[start], prefix, prefix_length) == 0) {
+			/* Match the existing bounded identity-field behavior without
+			 * constructing a second copy on the main thread stack.
+			 */
+			length = length < ESPAT_IDENTITY_CAPACITY - 1U ?
+				length : ESPAT_IDENTITY_CAPACITY - 1U;
+			write((const char *)&response->bytes[start], length, context);
+			return;
+		}
+		start = i + 1U;
+	}
+	emit_text(write, context, "unavailable");
+}
+
 static void emit_transaction(const struct espat_transaction_evidence *evidence,
 			     espat_evidence_write_fn write, void *context)
 {
@@ -164,8 +199,6 @@ void espat_evidence_emit(const struct espat_transaction_evidence *at_evidence,
 			 const struct espat_transaction_evidence *gmr_evidence,
 			 espat_evidence_write_fn write, void *context)
 {
-	struct espat_identity identity;
-
 	if (at_evidence == NULL || gmr_evidence == NULL || write == NULL) {
 		return;
 	}
@@ -173,13 +206,12 @@ void espat_evidence_emit(const struct espat_transaction_evidence *at_evidence,
 	emit_transaction(at_evidence, write, context);
 	emit_transaction(gmr_evidence, write, context);
 	if (gmr_evidence->executed) {
-		espat_response_extract_identity(&gmr_evidence->response, &identity);
 		emit_text(write, context, "AT+GMR at_version=");
-		emit_text(write, context, identity.esp_at[0] != '\0' ?
-			  identity.esp_at : "unavailable");
+		emit_identity_line(&gmr_evidence->response, "AT version:",
+				   write, context);
 		emit_text(write, context, "\nAT+GMR sdk_version=");
-		emit_text(write, context, identity.esp_idf[0] != '\0' ?
-			  identity.esp_idf : "unavailable");
+		emit_identity_line(&gmr_evidence->response, "SDK version:",
+				   write, context);
 		emit_text(write, context, "\n");
 	}
 	emit_text(write, context, "ESPAT_EVIDENCE_END\n");

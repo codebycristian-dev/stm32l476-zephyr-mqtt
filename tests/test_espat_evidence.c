@@ -89,6 +89,44 @@ static void test_maximum_and_binary_response(void)
 	assert(strstr(output.bytes, "AT rx_printable=.xxxxxxxxxxxxxxx") != NULL);
 	assert(strstr(output.bytes, "AT+GMR executed=0\n") != NULL);
 	assert(output.length > 2100U);
+	assert(strstr(output.bytes, "ESPAT_EVIDENCE_END\n") != NULL);
+}
+
+static void test_maximum_identity_fields(void)
+{
+	struct espat_transaction_evidence at = {.name = "AT", .tx_count = 4U};
+	struct espat_transaction_evidence gmr = {.name = "AT+GMR", .tx_count = 8U};
+	struct output_capture output = {0};
+	uint8_t response[ESPAT_RESPONSE_CAPACITY];
+	size_t used = 0U;
+
+	response[used++] = '\0';
+	response[used++] = 0xffU;
+	response[used++] = '\r';
+	response[used++] = '\n';
+	used += (size_t)snprintf((char *)response + used, sizeof(response) - used,
+				 "AT version:");
+	memset(response + used, 'A', ESPAT_IDENTITY_CAPACITY);
+	used += ESPAT_IDENTITY_CAPACITY;
+	response[used++] = '\r';
+	response[used++] = '\n';
+	used += (size_t)snprintf((char *)response + used, sizeof(response) - used,
+				 "SDK version:");
+	memset(response + used, 'I', ESPAT_IDENTITY_CAPACITY);
+	used += ESPAT_IDENTITY_CAPACITY;
+	response[used++] = '\r';
+	response[used++] = '\n';
+	response[used++] = 'O';
+	response[used++] = 'K';
+	response[used++] = '\r';
+	response[used++] = '\n';
+	feed(&at, (const uint8_t *)"OK\r\n", 4U);
+	feed(&gmr, response, used);
+	espat_evidence_emit(&at, &gmr, capture_write, &output);
+	assert(!output.overflow);
+	assert(strstr(output.bytes, "AT+GMR at_version=AT version:") != NULL);
+	assert(strstr(output.bytes, "AT+GMR sdk_version=SDK version:") != NULL);
+	assert(strstr(output.bytes, "ESPAT_EVIDENCE_END\n") != NULL);
 }
 
 static void test_fail_closed_and_overflow(void)
@@ -114,11 +152,44 @@ static void test_fail_closed_and_overflow(void)
 	assert(strstr(output.bytes, "AT+GMR executed=0") != NULL);
 }
 
+static void test_gmr_gate_rejects_every_failure_signal(void)
+{
+	struct espat_transaction_evidence at = {.name = "AT", .executed = true};
+
+	at.response.final = ESPAT_FINAL_OK;
+	assert(espat_evidence_allows_gmr(&at));
+	at.transmit_failed = true;
+	assert(!espat_evidence_allows_gmr(&at));
+	at.transmit_failed = false;
+	at.timed_out = true;
+	assert(!espat_evidence_allows_gmr(&at));
+	at.timed_out = false;
+	at.response.overflow = true;
+	assert(!espat_evidence_allows_gmr(&at));
+	at.response.overflow = false;
+	at.errors.parity = 1U;
+	assert(!espat_evidence_allows_gmr(&at));
+	at.errors.parity = 0U;
+	at.errors.framing = 1U;
+	assert(!espat_evidence_allows_gmr(&at));
+	at.errors.framing = 0U;
+	at.errors.noise = 1U;
+	assert(!espat_evidence_allows_gmr(&at));
+	at.errors.noise = 0U;
+	at.errors.overrun = 1U;
+	assert(!espat_evidence_allows_gmr(&at));
+	at.errors.overrun = 0U;
+	at.errors.ring_overflow = 1U;
+	assert(!espat_evidence_allows_gmr(&at));
+}
+
 int main(void)
 {
 	test_complete_report_and_identity();
 	test_maximum_and_binary_response();
+	test_maximum_identity_fields();
 	test_fail_closed_and_overflow();
+	test_gmr_gate_rejects_every_failure_signal();
 	puts("ESP-AT deterministic evidence host tests: PASS");
 	return 0;
 }
