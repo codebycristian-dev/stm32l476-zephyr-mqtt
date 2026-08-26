@@ -18,11 +18,19 @@ static struct espat_response parse(const char *text)
 
 int main(void)
 {
+	struct espat_identity identity;
 	struct espat_response response = parse("AT\r\r\nOK\r\n");
 	assert(response.final == ESPAT_FINAL_OK);
 	assert(response.echo_count == 1U);
 	assert(response.unsolicited_count == 0U);
 	assert(espat_response_complete(&response));
+
+	response = parse("AT+GMR\r\r\nAT version:4.1.1.0-dev\r\nSDK version:v5.4.2\r\nOK\r\n");
+	assert(response.final == ESPAT_FINAL_OK);
+	assert(response.echo_count == 1U);
+	espat_response_extract_identity(&response, &identity);
+	assert(strcmp(identity.esp_at, "AT version:4.1.1.0-dev") == 0);
+	assert(strcmp(identity.esp_idf, "SDK version:v5.4.2") == 0);
 
 	response = parse("ready\r\nWIFI DISCONNECT\r\nERROR\r\n");
 	assert(response.final == ESPAT_FINAL_ERROR);
@@ -44,6 +52,11 @@ int main(void)
 	}
 	assert(response.length == ESPAT_RESPONSE_CAPACITY);
 	assert(response.overflow);
+
+	response = parse("ERROR\r\n");
+	espat_response_extract_identity(&response, &identity);
+	assert(identity.esp_at[0] == '\0');
+	assert(identity.esp_idf[0] == '\0');
 
 	puts("ESP-AT response parser host tests: PASS");
 	return 0;

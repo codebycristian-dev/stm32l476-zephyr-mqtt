@@ -7,7 +7,7 @@ The available ESP32-C6 must be qualified as a known-good ESP-AT development mode
 - Add a repeatable, Linux-hosted qualification workflow that identifies the attached ESP32-C6 and its USB serial interfaces, selects the AT interface, detects whether ESP-AT is installed, and determines the working serial configuration without flashing, erasing, restoring, or installing packages.
 - Verify and record basic ESP-AT identity and status, then require Wi-Fi association, IP acquisition, and a plain TCP connect/send/receive/close exchange for full qualification. Credentials are accepted only through ephemeral, non-echoing input.
 - Define the smallest observed common ESP-AT command and response subset suitable for a future modem-neutral STM32 engine, distinguishing generic ESP-AT behavior from ESP32-C6-specific observations.
-- Reuse the separately implemented and physically verified STM32 USART1 transport for one bounded `AT\r\n` diagnostic, while leaving MQTT, network commands, and modem mutation out of scope.
+- Reuse the separately implemented and physically verified STM32 USART1 transport for a bounded, gated `AT\r\n` then `AT+GMR\r\n` diagnostic, while leaving MQTT, network commands, and modem mutation out of scope.
 - Add a project-local `espat-development-modem-readiness` skill whose single repository qualification tool is the executable source of truth and whose workflow does not persist credentials.
 
 ## Capabilities

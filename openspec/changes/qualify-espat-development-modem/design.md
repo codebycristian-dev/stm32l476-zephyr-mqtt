@@ -6,6 +6,8 @@ Qualification covers Linux USB discovery, serial command exchange, Wi-Fi associa
 
 Subsequent hardware inspection established an ESP32-C6 revision 0.2 with 16 MB flash. The WCH `1a86:55d3` interface at `/dev/ttyACM0` is the UART0 download/log path. For the official default ESP-AT configuration on ESP32-C6, the AT command UART is UART1 using GPIO6 as RX and GPIO7 as TX. ESP-AT firmware can remap these pins, and the currently installed firmware on this board has not yet been shown to use this mapping. The earlier UART0 probe is inconclusive about ESP-AT rather than evidence that ESP-AT is absent or unresponsive. The physically verified STM32 USART1 transport now resolves the external UART-host blocker and can test the default UART1 mapping.
 
+Provisioning subsequently established ESP32-C6 revision 0.2 running ESP-AT v4.1.1.0 with a healthy UART0 boot. The firmware reports its AT endpoint as UART1 on GPIO6 RX and GPIO7 TX at 115200 8N1 with CTS/RTS disabled. The next diagnostic is prepared for this reported endpoint but remains unexecuted until a separate Nucleo flash authorization.
+
 ## Goals / Non-Goals
 
 **Goals:**
@@ -58,6 +60,8 @@ Alternative: expose raw AT commands directly to MQTT. Rejected because it couple
 ### Reuse the verified USART1 transport for the first UART1 probe
 
 The separate USART1 change established PA9/PA10, 115200 8N1, no flow control, polling TX, interrupt RX, and a static 64-byte ring with a physical 69/69-byte loopback pass and zero error counters. This change adds only a fixed-storage parser and application diagnostic that sends `AT\r\n`, accepts at most 64 response bytes for 1000 ms, classifies final results, echo, prompts, unsolicited lines, overflow, and timeout, and reports through the unchanged USART2 console.
+
+After successful provisioning, the follow-up diagnostic sends exactly `AT\r\n`, accepts at most 512 response bytes for 1000 ms, and sends exactly `AT+GMR\r\n` only after a final `OK` without overflow. The identity response accepts at most 512 bytes for 2000 ms. Each transaction preserves bounded hexadecimal and printable evidence, exact TX/RX counts, classifications, and USART error/ring-overflow counters; successful `AT+GMR` parsing extracts reported ESP-AT and ESP-IDF identity fields when present. The proven 64-byte interrupt ring and USART1 transport remain unchanged.
 
 ## Risks / Trade-offs
 

@@ -8,11 +8,12 @@ config APP_USART1_LOOPBACK
 	  the unchanged USART2/ST-LINK console. Do not enable for normal firmware.
 
 config APP_ESPAT_AT_DIAGNOSTIC
-	bool "Send one bounded ESP-AT health command on USART1"
+	bool "Run bounded ESP-AT identity diagnostic on USART1"
 	default y
 	depends on !APP_USART1_LOOPBACK
 	help
-	  Sends only AT followed by CRLF, collects at most 64 response bytes for
-	  1000 ms, classifies the response, and reports through USART2/ST-LINK.
+	  Sends AT followed by CRLF and requires final OK before sending AT+GMR
+	  followed by CRLF. Each response uses a fixed 512-byte capture and a
+	  bounded deadline, with results reported through USART2/ST-LINK.
 
 source "Kconfig.zephyr"

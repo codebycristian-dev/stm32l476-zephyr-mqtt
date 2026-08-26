@@ -10,12 +10,17 @@ static bool line_equals(const struct espat_response *response, const char *text)
 	       memcmp(response->line, text, length) == 0;
 }
 
+static bool line_is_echo(const struct espat_response *response)
+{
+	return line_equals(response, "AT") || line_equals(response, "AT+GMR");
+}
+
 static void classify_line(struct espat_response *response)
 {
 	if (response->line_length == 0U) {
 		return;
 	}
-	if (line_equals(response, "AT")) {
+	if (line_is_echo(response)) {
 		response->echo_count++;
 	} else if (response->line[0] == '>') {
 		/* Prompts are counted as bytes arrive, not as unsolicited lines. */
@@ -46,6 +51,7 @@ void espat_response_feed(struct espat_response *response, uint8_t byte)
 	} else {
 		response->overflow = true;
 	}
+	response->ended_with_lf = byte == '\n';
 	if (byte == '>') {
 		response->prompt_count++;
 	}
@@ -67,5 +73,47 @@ void espat_response_finish(struct espat_response *response)
 
 bool espat_response_complete(const struct espat_response *response)
 {
-	return response != NULL && response->final != ESPAT_FINAL_NONE;
+	return response != NULL && response->final != ESPAT_FINAL_NONE &&
+	       response->ended_with_lf;
+}
+
+
+static void copy_identity_line(char *destination, const uint8_t *line, size_t length)
+{
+	size_t copy_length = length < ESPAT_IDENTITY_CAPACITY - 1U ?
+		length : ESPAT_IDENTITY_CAPACITY - 1U;
+
+	memcpy(destination, line, copy_length);
+	destination[copy_length] = '\0';
+}
+
+void espat_response_extract_identity(const struct espat_response *response,
+				     struct espat_identity *identity)
+{
+	size_t start = 0U;
+
+	if (identity == NULL) {
+		return;
+	}
+	*identity = (struct espat_identity){0};
+	if (response == NULL) {
+		return;
+	}
+	for (size_t i = 0U; i <= response->length; i++) {
+		bool at_end = i == response->length;
+		uint8_t byte = at_end ? '\n' : response->bytes[i];
+		size_t length;
+
+		if (byte != '\r' && byte != '\n') {
+			continue;
+		}
+		length = i - start;
+		if (length >= 11U && memcmp(&response->bytes[start], "AT version:", 11U) == 0) {
+			copy_identity_line(identity->esp_at, &response->bytes[start], length);
+		} else if (length >= 12U &&
+			   memcmp(&response->bytes[start], "SDK version:", 12U) == 0) {
+			copy_identity_line(identity->esp_idf, &response->bytes[start], length);
+		}
+		start = i + 1U;
+	}
 }

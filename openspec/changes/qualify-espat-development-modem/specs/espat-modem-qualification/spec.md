@@ -106,8 +106,12 @@ The workflow SHALL retain only the minimum evidence needed to support the result
 - **THEN** the result is fully qualified and may proceed to OpenSpec verification and archival readiness
 
 ### Requirement: Bounded STM32 UART1 diagnostic
-The qualification firmware SHALL reuse the verified direct-CMSIS USART1 transport, send only `AT\r\n` as its first runtime modem command at 115200 8N1 with no flow control, collect a response in fixed bounded storage, classify `OK`, error, echo, unsolicited lines, prompts, overflow, and timeout, and report through USART2/ST-LINK. It SHALL NOT use Zephyr UART, STM32 HAL/LL, dynamic allocation, network commands, or MQTT.
+The qualification firmware SHALL reuse the verified direct-CMSIS USART1 transport, send exactly `AT\r\n` as its first runtime modem command at 115200 8N1 with no flow control, and send exactly `AT+GMR\r\n` only after the first command completes with a final `OK` and no overflow. Each response SHALL use fixed bounded storage and a bounded deadline, preserve raw/printable evidence and exact TX/RX counts, classify `OK`, error, echo, unsolicited lines, prompts, overflow, and timeout, report USART1 parity, framing, noise, overrun, and ring-overflow counters through USART2/ST-LINK, and extract reported ESP-AT and ESP-IDF identity from `AT+GMR` when available. It SHALL NOT use Zephyr UART, STM32 HAL/LL, dynamic allocation, network commands, or MQTT.
 
 #### Scenario: Diagnostic is prepared but not flashed
 - **WHEN** host tests, target build, transport review, and static validation pass
 - **THEN** the firmware is ready for the explicit wiring and flash step but no runtime modem qualification task is marked complete
+
+#### Scenario: Initial health command does not pass
+- **WHEN** `AT\r\n` ends in error, timeout, or overflow rather than final `OK`
+- **THEN** the diagnostic reports bounded evidence and counters and does not transmit `AT+GMR\r\n`
