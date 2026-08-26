@@ -5,7 +5,7 @@ REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 pass() { printf 'PASS: %s\n' "$1"; }
 
-for script in doctor.sh build.sh flash.sh monitor.sh espat-device.sh espat-read-backup.sh espat-validate-preparation.sh prepare-espat-source.sh; do
+for script in doctor.sh build.sh flash.sh monitor.sh espat-device.sh espat-read-backup.sh espat-validate-preparation.sh espat-post-provision-check.sh prepare-espat-source.sh; do
   bash -n "${REPO_ROOT}/scripts/${script}" || fail "syntax: ${script}"
 done
 pass "shell syntax"
@@ -26,6 +26,11 @@ if ESPAT_SYS_USB_ROOT="${tmp_root}/sys" ESPAT_TTY_CLASS_ROOT="${tmp_root}/class"
   fail "ESP resolver accepted a serial mismatch"
 fi
 pass "ESP resolver uniquely matches identity and fails closed"
+
+if ESPAT_POST_PROVISION_AUTHORIZATION=invalid "${REPO_ROOT}/scripts/espat-post-provision-check.sh" --authorized-post-provision-check >/dev/null 2>&1; then
+  fail "post-provision checks accepted missing authorization"
+fi
+pass "post-provision device checks fail closed without exact authorization"
 
 "${REPO_ROOT}/scripts/espat-validate-preparation.sh" >/dev/null || fail "ESP preparation validation failed"
 pass "ESP preparation remains non-destructive and private"
