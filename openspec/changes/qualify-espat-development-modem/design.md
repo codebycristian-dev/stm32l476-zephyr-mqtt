@@ -63,6 +63,8 @@ The separate USART1 change established PA9/PA10, 115200 8N1, no flow control, po
 
 After successful provisioning, the follow-up diagnostic sends exactly `AT\r\n`, accepts at most 512 response bytes for 1000 ms, and sends exactly `AT+GMR\r\n` only after a final `OK` without overflow. The identity response accepts at most 512 bytes for 2000 ms. Each transaction preserves bounded hexadecimal and printable evidence, exact TX/RX counts, classifications, and USART error/ring-overflow counters; successful `AT+GMR` parsing extracts reported ESP-AT and ESP-IDF identity fields when present. The proven 64-byte interrupt ring and USART1 transport remain unchanged.
 
+The first post-provision run proved the gated exchange but Zephyr's 1024-byte deferred logger overflowed while several large evidence messages were queued, dropping nine messages. Mandatory evidence therefore uses two fixed transaction snapshots and a single delimited record written synchronously with `printk` through the unchanged USART2 console. The diagnostic build also selects immediate logging so an asynchronous log worker cannot interleave ordinary status with that record; no logger queue is enlarged. A diagnostic-only 1000 ms startup delay gives the host time to open the ST-LINK VCP after normal boot; it does not retry commands or depend on a programmer reset.
+
 ## Risks / Trade-offs
 
 - [Multiple USB serial interfaces or unstable `/dev/tty*` names] → Correlate udev/sysfs metadata and stable `/dev/serial/by-id` links, enumerate all candidates, and require an unambiguous selected endpoint.

@@ -4,7 +4,8 @@ set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 test_binary="$(mktemp /tmp/stm32l476-byte-ring-test.XXXXXX)"
 parser_binary="$(mktemp /tmp/stm32l476-espat-parser-test.XXXXXX)"
-trap 'rm -f "${test_binary}" "${parser_binary}"' EXIT
+evidence_binary="$(mktemp /tmp/stm32l476-espat-evidence-test.XXXXXX)"
+trap 'rm -f "${test_binary}" "${parser_binary}" "${evidence_binary}"' EXIT
 
 cc -std=c11 -Wall -Wextra -Werror -pedantic \
   -I"${repo_root}/include" \
@@ -17,3 +18,11 @@ cc -std=c11 -Wall -Wextra -Werror -pedantic \
   "${repo_root}/src/espat_response.c" "${repo_root}/tests/test_espat_response.c" \
   -o "${parser_binary}"
 "${parser_binary}"
+
+cc -std=c11 -Wall -Wextra -Werror -pedantic \
+  -I"${repo_root}/include" \
+  "${repo_root}/src/espat_response.c" \
+  "${repo_root}/src/espat_evidence.c" \
+  "${repo_root}/tests/test_espat_evidence.c" \
+  -o "${evidence_binary}"
+"${evidence_binary}"

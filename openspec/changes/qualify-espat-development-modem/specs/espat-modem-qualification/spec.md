@@ -108,6 +108,8 @@ The workflow SHALL retain only the minimum evidence needed to support the result
 ### Requirement: Bounded STM32 UART1 diagnostic
 The qualification firmware SHALL reuse the verified direct-CMSIS USART1 transport, send exactly `AT\r\n` as its first runtime modem command at 115200 8N1 with no flow control, and send exactly `AT+GMR\r\n` only after the first command completes with a final `OK` and no overflow. Each response SHALL use fixed bounded storage and a bounded deadline, preserve raw/printable evidence and exact TX/RX counts, classify `OK`, error, echo, unsolicited lines, prompts, overflow, and timeout, report USART1 parity, framing, noise, overrun, and ring-overflow counters through USART2/ST-LINK, and extract reported ESP-AT and ESP-IDF identity from `AT+GMR` when available. It SHALL NOT use Zephyr UART, STM32 HAL/LL, dynamic allocation, network commands, or MQTT.
 
+Mandatory evidence SHALL remain in fixed transaction snapshots until the sequence ends and SHALL be emitted as one delimited synchronous USART2 record rather than as deferred logger messages. A bounded one-second diagnostic-only startup delay SHALL allow a host to attach to the ST-LINK VCP after normal boot. Any capture beyond the 512-byte bound SHALL be explicitly classified as both overflow and truncation; no automatic command retry SHALL occur.
+
 #### Scenario: Diagnostic is prepared but not flashed
 - **WHEN** host tests, target build, transport review, and static validation pass
 - **THEN** the firmware is ready for the explicit wiring and flash step but no runtime modem qualification task is marked complete
@@ -115,3 +117,7 @@ The qualification firmware SHALL reuse the verified direct-CMSIS USART1 transpor
 #### Scenario: Initial health command does not pass
 - **WHEN** `AT\r\n` ends in error, timeout, or overflow rather than final `OK`
 - **THEN** the diagnostic reports bounded evidence and counters and does not transmit `AT+GMR\r\n`
+
+#### Scenario: Deferred logger capacity is insufficient
+- **WHEN** the complete hexadecimal and printable evidence exceeds Zephyr's deferred log buffer
+- **THEN** the mandatory delimited record bypasses that queue and is written synchronously without silently dropping or interleaving its transaction fields
