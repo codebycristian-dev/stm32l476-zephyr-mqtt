@@ -189,7 +189,7 @@ Coverage analysis skipped — no coverage tool is configured for the shell-scrip
 
 ### Quality Metrics
 
-**Linter**: ✅ `bash -n` passed for all related shell scripts through the primary suite.  
+**Linter**: ✅ `bash -n` passed for all related shell scripts through the primary suite.
 **Type Checker**: ➖ Not available for the mixed Bash/Python/firmware-evidence change.
 
 ## Issues by Severity
