@@ -7,4 +7,15 @@ config APP_USART1_LOOPBACK
 	  Requires PA9 to be physically connected to PA10. Results are logged on
 	  the unchanged USART2/ST-LINK console. Do not enable for normal firmware.
 
+config APP_ESPAT_AT_DIAGNOSTIC
+	bool "Run bounded ESP-AT identity diagnostic on USART1"
+	default y
+	depends on !APP_USART1_LOOPBACK
+	help
+	  Sends AT followed by CRLF and requires final OK before sending AT+GMR
+	  followed by CRLF. Each response uses a fixed 512-byte capture and a
+	  bounded deadline. After a one-second diagnostic-only startup delay, one
+	  delimited evidence record is written synchronously through USART2/ST-LINK
+	  so mandatory evidence cannot overflow Zephyr's deferred logger queue.
+
 source "Kconfig.zephyr"

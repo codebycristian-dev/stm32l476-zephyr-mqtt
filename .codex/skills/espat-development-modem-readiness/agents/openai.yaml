@@ -1,0 +1,4 @@
+interface:
+  display_name: "ESP-AT Modem Readiness"
+  short_description: "Safely qualify an ESP-AT development modem"
+  default_prompt: "Use $espat-development-modem-readiness to safely qualify the attached ESP32-C6 as an ESP-AT modem."

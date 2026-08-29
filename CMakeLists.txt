@@ -6,6 +6,8 @@ project(stm32l476_zephyr_mqtt LANGUAGES C)
 target_sources(app PRIVATE
   src/main.c
   src/byte_ring.c
+  src/espat_evidence.c
+  src/espat_response.c
   src/usart1_transport.c
 )
 target_include_directories(app PRIVATE include)

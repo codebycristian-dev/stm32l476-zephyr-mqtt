@@ -3,16 +3,83 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/printk.h>
 
 #include <string.h>
 
 #include "usart1_transport.h"
+#include "espat_evidence.h"
+#include "espat_response.h"
 
 LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 
 #define USER_LED_NODE DT_ALIAS(led0)
 #define LED_PERIOD_MS 500
 #define LOOPBACK_TIMEOUT_MS 1000
+#define ESPAT_AT_TIMEOUT_MS 1000
+#define ESPAT_GMR_TIMEOUT_MS 2000
+#define ESPAT_DIAGNOSTIC_STARTUP_DELAY_MS 1000
+
+#if CONFIG_APP_ESPAT_AT_DIAGNOSTIC
+static void run_espat_command(const uint8_t *command, size_t command_length,
+			      int32_t timeout_ms,
+			      struct espat_transaction_evidence *evidence)
+{
+	int64_t deadline;
+	uint8_t byte;
+
+	espat_response_init(&evidence->response);
+	evidence->tx_count = command_length;
+	evidence->executed = true;
+	if (usart1_transport_write(command, command_length) < 0) {
+		evidence->transmit_failed = true;
+		return;
+	}
+	deadline = k_uptime_get() + timeout_ms;
+	while (!espat_response_complete(&evidence->response) &&
+	       !evidence->response.overflow &&
+	       k_uptime_get() < deadline) {
+		if (usart1_transport_read(&byte)) {
+			espat_response_feed(&evidence->response, byte);
+		} else {
+			k_msleep(1);
+		}
+	}
+	espat_response_finish(&evidence->response);
+	evidence->timed_out = evidence->response.final == ESPAT_FINAL_NONE &&
+			      !evidence->response.overflow;
+	usart1_transport_get_errors(&evidence->errors);
+}
+
+static void evidence_console_write(const char *data, size_t length, void *context)
+{
+	ARG_UNUSED(context);
+	for (size_t i = 0U; i < length; i++) {
+		printk("%c", data[i]);
+	}
+}
+
+static void run_espat_at_diagnostic(void)
+{
+	static const uint8_t at_command[] = {'A', 'T', '\r', '\n'};
+	static const uint8_t gmr_command[] = {'A', 'T', '+', 'G', 'M', 'R', '\r', '\n'};
+	static struct espat_transaction_evidence at_evidence = {.name = "AT"};
+	static struct espat_transaction_evidence gmr_evidence = {.name = "AT+GMR"};
+
+	/* Give a host time to open the ST-LINK VCP after normal boot. Mandatory
+	 * evidence bypasses log formatting and is emitted synchronously.
+	 */
+	k_msleep(ESPAT_DIAGNOSTIC_STARTUP_DELAY_MS);
+	run_espat_command(at_command, sizeof(at_command), ESPAT_AT_TIMEOUT_MS,
+			  &at_evidence);
+	if (espat_evidence_allows_gmr(&at_evidence)) {
+		run_espat_command(gmr_command, sizeof(gmr_command),
+				  ESPAT_GMR_TIMEOUT_MS, &gmr_evidence);
+	}
+	espat_evidence_emit(&at_evidence, &gmr_evidence,
+			    evidence_console_write, NULL);
+}
+#endif
 
 #if CONFIG_APP_USART1_LOOPBACK
 static int run_loopback_case(const char *name, const uint8_t *payload, size_t length)
@@ -97,6 +164,10 @@ int main(void)
 	if (run_physical_loopback() < 0) {
 		return 0;
 	}
+#endif
+
+#if CONFIG_APP_ESPAT_AT_DIAGNOSTIC
+	run_espat_at_diagnostic();
 #endif
 
 #if !DT_NODE_HAS_STATUS(USER_LED_NODE, okay)
