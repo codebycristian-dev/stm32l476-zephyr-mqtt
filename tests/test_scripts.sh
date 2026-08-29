@@ -5,10 +5,35 @@ REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 pass() { printf 'PASS: %s\n' "$1"; }
 
-for script in doctor.sh build.sh flash.sh monitor.sh; do
+for script in doctor.sh build.sh flash.sh monitor.sh espat-device.sh espat-read-backup.sh espat-validate-preparation.sh espat-post-provision-check.sh prepare-espat-source.sh; do
   bash -n "${REPO_ROOT}/scripts/${script}" || fail "syntax: ${script}"
 done
 pass "shell syntax"
+
+tmp_root="$(mktemp -d)"
+trap 'rm -rf "${tmp_root}"' EXIT
+mkdir -p "${tmp_root}/sys/a/tty/a:1.0/ttyACM9" "${tmp_root}/class" "${tmp_root}/dev/serial/by-id" "${tmp_root}/dev"
+printf '1a86\n' > "${tmp_root}/sys/a/idVendor"
+printf '55d3\n' > "${tmp_root}/sys/a/idProduct"
+printf '5B14063285\n' > "${tmp_root}/sys/a/serial"
+touch "${tmp_root}/dev/ttyACM9"
+ln -s "${tmp_root}/sys/a/tty/a:1.0/ttyACM9" "${tmp_root}/class/ttyACM9"
+ln -s ../../ttyACM9 "${tmp_root}/dev/serial/by-id/usb-WCH_5B14063285-if00"
+resolved="$(ESPAT_SYS_USB_ROOT="${tmp_root}/sys" ESPAT_TTY_CLASS_ROOT="${tmp_root}/class" ESPAT_DEV_ROOT="${tmp_root}/dev" "${REPO_ROOT}/scripts/espat-device.sh")"
+[[ "${resolved}" == "${tmp_root}/dev/serial/by-id/usb-WCH_5B14063285-if00" ]] || fail "ESP resolver returned wrong path"
+printf 'different\n' > "${tmp_root}/sys/a/serial"
+if ESPAT_SYS_USB_ROOT="${tmp_root}/sys" ESPAT_TTY_CLASS_ROOT="${tmp_root}/class" ESPAT_DEV_ROOT="${tmp_root}/dev" "${REPO_ROOT}/scripts/espat-device.sh" >/dev/null 2>&1; then
+  fail "ESP resolver accepted a serial mismatch"
+fi
+pass "ESP resolver uniquely matches identity and fails closed"
+
+if ESPAT_POST_PROVISION_AUTHORIZATION=invalid "${REPO_ROOT}/scripts/espat-post-provision-check.sh" --authorized-post-provision-check >/dev/null 2>&1; then
+  fail "post-provision checks accepted missing authorization"
+fi
+pass "post-provision device checks fail closed without exact authorization"
+
+"${REPO_ROOT}/scripts/espat-validate-preparation.sh" >/dev/null || fail "ESP preparation validation failed"
+pass "ESP preparation remains non-destructive and private"
 
 (cd /tmp && "${REPO_ROOT}/scripts/doctor.sh" >/dev/null 2>&1) || fail "doctor failed outside repository root"
 [[ -x "${REPO_ROOT}/scripts/doctor.sh" ]] || fail "scripts are not executable"
