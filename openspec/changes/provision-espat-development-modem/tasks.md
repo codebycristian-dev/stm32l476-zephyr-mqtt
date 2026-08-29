@@ -24,4 +24,4 @@
 ## 4. Final Destructive Authorization Gate and Provisioning
 
 - [x] 4.1 Present the freshly matched device identity, verified backup path/digest, firmware manifest/digest, exact erase/write commands, risks, and recovery limits, then stop and obtain explicit user authorization for this exact destructive operation; any changed input invalidates authorization.
-- [ ] 4.2 Only after task 4.1 receives fresh explicit authorization, revalidate every bound input, execute only the authorized ESP32-C6 erase/write workflow, retain its complete log, reboot, and run the credential-free boot, `AT`, `AT+GMR`, and UART mapping verification without modifying STM32 USART1 or exercising Wi-Fi credentials or MQTT.
+- [x] 4.2 Only after task 4.1 receives fresh explicit authorization, revalidate every bound input, execute only the authorized ESP32-C6 erase/write workflow, retain its complete log, reboot, and run the credential-free boot, `AT`, `AT+GMR`, and UART mapping verification without modifying STM32 USART1 or exercising Wi-Fi credentials or MQTT.

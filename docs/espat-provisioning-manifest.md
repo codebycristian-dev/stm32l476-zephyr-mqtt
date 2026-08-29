@@ -1,8 +1,11 @@
 # ESP32-C6 ESP-AT preparation manifest
 
-Authorization status: NOT AUTHORIZED. This is review-only text; no erase or
-write operation has been executed. Any identity, backup digest, firmware hash,
-artifact, offset, or command change invalidates a future authorization.
+Authorization status: EXECUTED ONCE on 2026-08-26 after the recorded final
+gate. The complete, ignored execution log is
+`private/espat-evidence/provision-20260826T-authorized.log`. A later erase or
+write remains destructive and requires fresh authorization bound to its own
+then-current identity, backup digest, firmware hash, artifacts, offsets, and
+command.
 
 ## Target and strategy
 
@@ -94,25 +97,62 @@ For first provisioning, the filled 16 MiB factory image is preferred: its genera
 - SHA-256: `26ab342b257fe9ab5146beaa61a5b7d277457cdf49f1a899d7cdb799b22e2695`
 - esptool: 5.3.1
 
-## Proposed destructive workflow — do not execute
+## Authorized destructive workflow — executed once
 
-These commands are proposals only. They were not executed. A future authorization
-must bind the exact device, backup digest, manifest digest, artifacts, and command.
+The final gate revalidated the WCH `1a86:55d3` serial `5B14063285`, ESP32-C6
+revision v0.2, 16 MB detected flash, the preserved backup digest
+`26ab342b257fe9ab5146beaa61a5b7d277457cdf49f1a899d7cdb799b22e2695`, and the
+filled factory image digest
+`46fe184cc79dac002e55c278be878a7b863744dbdaf4691f2f4bea351a84e806`. It then
+executed exactly the factory-image command below once. Esptool reported
+`Wrote 16777216 bytes`, verified the written hash, and hard-reset the device.
+The full command and output are retained in the execution log named above.
 
-Preferred factory-bin proposal:
+Executed factory-bin command:
 
 ```text
 python -m esptool --chip esp32c6 --port <freshly-matched-by-id> --baud 460800 --before default-reset --after hard-reset write-flash --flash-mode dio --flash-freq 80m --flash-size 16MB 0x0 build/factory/factory_ESP32C6-16MB-TCP.bin
 ```
 
-Multi-bin proposal generated from `flasher_args.json`/`download.config`:
+Alternative multi-bin command generated from `flasher_args.json`/`download.config`
+(not executed):
 
 ```text
 python -m esptool --chip esp32c6 --port <freshly-matched-by-id> --baud 460800 --before default-reset --after hard-reset write-flash --flash-mode dio --flash-freq 80m --flash-size 16MB 0x0 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0xd000 build/ota_data_initial.bin 0x1e000 build/at_customize.bin 0x1f000 build/customized_partitions/mfg_nvs.bin 0x60000 build/esp-at.bin
 ```
 
-Expected credential-free verification: reboot once; capture bounded UART0 boot
-output; on UART1 send `AT\r\n` and `AT+GMR\r\n` at 115200 8N1 without flow
-control; prove host TX to GPIO6 and GPIO7 to host RX. Do not join Wi-Fi, send
-credentials, use MQTT, or automatically restore. Recovery would require a
-separate authorization to write the complete verified backup and is not risk-free.
+## Credential-free post-provision verification
+
+The post-reset UART0 capture is retained at
+`private/espat-evidence/uart0-postflash-20260826T-bounded.raw`. It directly
+reports DIO, 80 MHz, `SPI Flash Size : 16MB`, the expected 16 MiB partition
+table ending at `0x1000000`, and UART1 `tx:7 rx:6 cts:-1 rts:-1 baudrate:115200`.
+
+The independent NUCLEO-L476RG diagnostic record retained by
+`change/qualify-espat-development-modem` then completed `AT` once (TX 4, RX
+11, final `OK`) and `AT+GMR` once (TX 8, RX 198, final `OK`). Timeout, TX
+error, overflow, truncation, UART parity/framing/noise/overrun, and ring
+overflow counters were all zero; no MPU fault, stack overflow, or Zephyr fatal
+error occurred. It exercised neither Wi-Fi credentials, TCP, MQTT, nor a
+second modem mutation.
+
+`AT+GMR` identified the installed image as ESP-AT `4.1.1.0` (`ba4dd0e`,
+ESP32C6, Jul 31 2025 08:37:48), ESP-IDF
+`v5.4.1-643-g8ad0d3d8f2f-dirty`, compiled Aug 26 2026 05:59:24.
+
+### `ESP32C6-4MB` runtime label
+
+`AT+GMR` reported `Bin version:v4.1.1.0(ESP32C6-4MB)`, while the generated
+build metadata is explicitly 16 MB: `sdkconfig`, `download.config`, and
+`flasher_args.json` specify 16 MB; the factory image is 16,777,216 bytes; and
+the observed boot partition table ends at `0x1000000`. ESP-AT renders the
+parenthetical bin label from its factory module-name data, not from an
+esptool flash probe. The generated factory-NVS CSV records
+`ESP32C6-16MB-TCP`, whereas the observed runtime label remained `ESP32C6-4MB`.
+That metadata discrepancy is retained as a provenance follow-up; it is not
+used to infer physical capacity and does not invalidate the direct 16 MB
+bootloader, partition-table, and write evidence. No firmware was modified
+merely to rename the label.
+
+Recovery would require a separately authorized full write of the verified
+16 MiB backup and is not risk-free.

@@ -4,7 +4,7 @@ set -euo pipefail
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 manifest="${REPO_ROOT}/docs/espat-provisioning-manifest.md"
 [[ -r "${manifest}" ]] || { printf 'FAIL: manifest missing\n' >&2; exit 1; }
-rg -q 'Authorization status: NOT AUTHORIZED' "${manifest}"
+rg -q 'Authorization status: EXECUTED ONCE' "${manifest}"
 rg -q '0x000000.*0x1000000' "${manifest}"
 rg -q 'GPIO6.*RX' "${manifest}"
 rg -q 'GPIO7.*TX' "${manifest}"
