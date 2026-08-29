@@ -36,4 +36,4 @@
 - [x] 4.7 Run host tests, a pristine nucleo_l476rg build, USART review, strict OpenSpec validation, and git diff checking for the post-provision diagnostic without flashing.
 - [x] 4.7a Replace lossy deferred mandatory evidence logs with fixed transaction snapshots and one bounded synchronous USART2 report, then repeat all host-only verification without flashing.
 - [x] 4.7b Remove the synchronous evidence path's large automatic identity copy, add bounded stack headroom and maximum-record host regressions, then repeat all host-only verification without flashing.
-- [ ] 4.8 Execute the separately authorized post-provision Nucleo diagnostic and retain its bounded `AT` and `AT+GMR` evidence without Wi-Fi, TCP, MQTT, or modem mutation.
+- [x] 4.8 Execute the separately authorized post-provision Nucleo diagnostic and retain its bounded `AT` and `AT+GMR` evidence without Wi-Fi, TCP, MQTT, or modem mutation.

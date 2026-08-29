@@ -25,10 +25,11 @@ bytes exact, all error counters zero), with PA9 TX, PA10 RX, polling transmit,
 interrupt-driven receive, and a static 64-byte receive ring. USART2 remains the
 ST-LINK diagnostic console.
 
-The smallest diagnostic firmware sends only `AT\r\n` once after USART1
-initialization. It collects at most 64 bytes for 1000 ms, classifies command
-echo, `OK`, `ERROR`/`FAIL`, prompts, other unsolicited lines, overflow, and
-timeout, and reports the summary through USART2.
+The post-provision diagnostic sends `AT\r\n` first, then sends `AT+GMR\r\n`
+only after a final `OK` without overflow. It retains fixed 512-byte transaction
+snapshots, classifies command echo, `OK`, `ERROR`/`FAIL`, prompts, other
+unsolicited lines, overflow, and timeout, and emits one bounded record through
+USART2/ST-LINK. It performs no Wi-Fi, TCP, MQTT, or modem mutation.
 
 ### Initial STM32 UART1 probe evidence (2026-08-14)
 
@@ -48,6 +49,34 @@ This is an inconclusive initial probe. It establishes only that no valid ESP-AT
 response was observed at 115200 8N1 on the tested default UART1 mapping. It is
 not evidence that ESP-AT is absent, and no alternate baud, mapping, command, or
 firmware was tried.
+
+### Post-provision STM32 UART1 diagnostic evidence (2026-08-28)
+
+The separately authorized NUCLEO-L476RG run used ST-LINK serial
+`066EFF515250898367012013` (firmware `V2J30M19`, board `NUCLEO-L476RG`, device
+`STM32L476`, ID `0x415`). It was flashed exactly once; approximately 27.56 KiB
+was programmed and application start passed. The ESP32-C6 WCH `1a86:55d3`
+device (serial `5B14063285`) was excluded from flashing and mutation.
+
+With PA9 to GPIO6, PA10 from GPIO7, and common ground, the record started as
+`ESPAT_EVIDENCE_BEGIN v=1 capacity=512` and ended with the observed
+`ESPAT_EVIDENCE_END` marker. `AT` completed once: TX 4, RX 11, final `OK`, no
+timeout, TX error, overflow, truncation, prompt, or USART/ring error. Its raw
+bytes were `00 41 54 0D 0A 0D 0A 4F 4B 0D 0A` and printable form
+`.AT....OK..`.
+
+`AT+GMR` then completed once: TX 8, RX 198, final `OK`, one echo, four
+unsolicited lines, and no timeout, TX error, overflow, truncation, prompt, or
+USART/ring error. The bounded response reported `AT version:4.1.1.0(ba4dd0e -
+ESP32C6 - Jul 31 2025 08:37:48)`, `SDK version:v5.4.1-643-g8ad0d3d8f2f-dirty`,
+`compile time(7c092f9):Aug 26 2026 05:59:24`, and
+`Bin version:v4.1.1.0(ESP32C6-4MB)`, followed by final `OK`. The complete raw
+`AT+GMR` capture is intentionally not reproduced here; this retained summary is
+traceable to the bounded transaction counts and observed fields.
+
+No MPU fault, stack overflow, or Zephyr fatal error occurred. The prior
+synchronous-evidence stack-overflow regression is physically resolved by this
+run.
 
 Run non-secret discovery first:
 
